@@ -1,7 +1,20 @@
 import yt_dlp
-from tkinter import Tk, Label, Entry, Button, StringVar, OptionMenu, filedialog
+from tkinter import Tk, Label, Entry, Button, StringVar, OptionMenu, filedialog, Checkbutton, BooleanVar
 from tkinter.ttk import Progressbar
 import re
+
+# Từ điển ánh xạ mã ngôn ngữ sang tên ngôn ngữ
+language_map = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "zh": "Chinese",
+    "vi": "Vietnamese"
+}
 
 def progress_hook(d):
     if d['status'] == 'downloading':
@@ -38,6 +51,22 @@ def download_video():
         'merge_output_format': 'mp4',  # Đảm bảo định dạng đầu ra là MP4
         'progress_hooks': [progress_hook],  # Thêm hook để cập nhật tiến trình
     }
+
+    if subtitle_var.get():
+        subtitle_lang_name = subtitle_lang_var.get()
+        subtitle_lang = list(language_map.keys())[list(language_map.values()).index(subtitle_lang_name)]
+        ydl_opts['subtitleslangs'] = [subtitle_lang]
+        ydl_opts['writesubtitles'] = True
+
+        # Kiểm tra định dạng phụ đề có sẵn
+        with yt_dlp.YoutubeDL() as ydl:
+            info_dict = ydl.extract_info(link, download=False)
+            subs = info_dict.get('subtitles', {})
+            if subtitle_lang in subs and any(fmt['ext'] == 'srt' for fmt in subs[subtitle_lang]):
+                ydl_opts['subtitlesformat'] = 'srt'
+            else:
+                ydl_opts['subtitlesformat'] = 'vtt'
+
     download_button.pack_forget()
     progress_bar.pack()
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -56,6 +85,16 @@ quality_var = StringVar(root)
 quality_var.set("1080p")  # default value
 quality_options = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p", "144p"]
 OptionMenu(root, quality_var, *quality_options).pack()
+
+subtitle_var = BooleanVar()
+subtitle_checkbox = Checkbutton(root, text="Download Subtitles", variable=subtitle_var)
+subtitle_checkbox.pack()
+
+Label(root, text="Select Subtitle Language:").pack()
+subtitle_lang_var = StringVar(root)
+subtitle_lang_var.set("English")  # default value
+subtitle_lang_options = list(language_map.values())
+OptionMenu(root, subtitle_lang_var, *subtitle_lang_options).pack()
 
 progress_var = StringVar()
 progress_bar = Progressbar(root, orient="horizontal", length=300, mode="determinate", variable=progress_var)
